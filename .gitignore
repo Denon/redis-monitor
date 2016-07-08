@@ -90,3 +90,6 @@ ENV/
 
 # pycharm file
 .idea/
+
+# setting
+setting.py
