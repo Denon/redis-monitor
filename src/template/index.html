@@ -2,19 +2,25 @@
 <meta charset="utf-8" />
 <html>
 <head>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js">
+<script src="http://apps.bdimg.com/libs/jquery/1.4.2/jquery.min.js">
 </script>
   <script language="javascript" type="text/javascript">
     $(function() {
+      var int= null;
       var conn = null;
       function log(msg) {
         var control = $('#log');
         control.html(control.html() + msg + '<br/>');
         control.scrollTop(control.scrollTop() + 1000);
       }
+      function info(){
+        if (conn != null){
+          conn.send("get");
+        }
+      }
       function connect() {
         disconnect();
-        var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host;
+        var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host + "/data";
         conn = new WebSocket(wsUri);
         log('Connecting...');
         conn.onopen = function() {
@@ -29,6 +35,7 @@
           conn = null;
           update_ui();
         };
+        int = window.setInterval(info,1000);
       }
       function disconnect() {
         if (conn != null) {
@@ -48,6 +55,7 @@
           $('#connect').html('Disconnect');
         }
       }
+
       $('#connect').click(function() {
         if (conn == null) {
           connect();
@@ -58,10 +66,9 @@
         return false;
       });
       $('#send').click(function() {
-        var text = $('#text').val();
-        log('Sending: ' + text);
-        conn.send(text);
-        $('#text').val('').focus();
+
+        window.clearInterval(int);
+        disconnect();
         return false;
       });
       $('#text').keyup(function(e) {

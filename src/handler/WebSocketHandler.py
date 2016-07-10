@@ -1,21 +1,33 @@
 import aiohttp
-from aiohttp import web
 
-async def websocket_handler(request):
+from aiohttp.web import Application, Response, MsgType, WebSocketResponse
 
-    ws = web.WebSocketResponse()
-    await ws.prepare(request)
 
-    async for msg in ws:
-        if msg.tp == aiohttp.MsgType.text:
-            if msg.data == 'close':
-                await ws.close()
+class RedisHanlder(object):
+    def __init__(self, queue):
+        self.queue = queue
+
+    async def get(self, request):
+        resp = WebSocketResponse()
+
+        await resp.prepare(request)
+        print('Someone joined.')
+        for ws in request.app['sockets']:
+            ws.send_str('Someone joined')
+        request.app['sockets'].append(resp)
+
+        while True:
+            msg = await resp.receive()
+
+            if msg.tp == MsgType.text:
+                for ws in request.app['sockets']:
+                    redis_info = self.queue.get()
+                    ws.send_str(str(redis_info))
             else:
-                ws.send_str(msg.data + '/answer')
-        elif msg.tp == aiohttp.MsgType.error:
-            print('ws connection closed with exception %s' %
-                  ws.exception())
+                break
 
-    print('websocket connection closed')
-
-    return ws
+        request.app['sockets'].remove(resp)
+        print('Someone disconnected.')
+        for ws in request.app['sockets']:
+            ws.send_str('Someone disconnected.')
+        return resp

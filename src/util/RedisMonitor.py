@@ -2,6 +2,7 @@
 
 from setting_sample import settings
 from threading import Timer
+import multiprocessing
 import redis
 import datetime
 import threading
@@ -169,7 +170,7 @@ class InfoThread(threading.Thread):
     and store the resulting statistics in the configured stats provider.
     """
 
-    def __init__(self, server, port, password=None):
+    def __init__(self, queue, server, port, password=None):
         """Initializes an InfoThread instance.
 
         Args:
@@ -181,6 +182,7 @@ class InfoThread(threading.Thread):
                     Default: None
         """
         threading.Thread.__init__(self)
+        self.result = queue
         self.server = server
         self.port = port
         self.password = password
@@ -217,10 +219,12 @@ class InfoThread(threading.Thread):
                 except:
                     peak_memory = used_memory
 
-                stats_provider.save_memory_info(self.id, current_time,
-                                                used_memory, peak_memory)
-                stats_provider.save_info_command(self.id, current_time,
-                                                 redis_info)
+                # stats_provider.save_memory_info(self.id, current_time,
+                #                                 used_memory, peak_memory)
+                # stats_provider.save_info_command(self.id, current_time,
+                #                                  redis_info)
+
+                self.result.put(redis_info)
 
                 # databases=[]
                 # for key in sorted(redis_info.keys()):
@@ -246,13 +250,16 @@ class InfoThread(threading.Thread):
                 print(tb)
                 print("==============================\n")
 
-class RedisMonitor(object):
+class RedisMonitor(multiprocessing.Process):
 
-    def __init__(self):
+    def __init__(self, duration, data_queue):
+        multiprocessing.Process.__init__(self)
         self.threads = []
         self.active = True
+        self.duration = duration
+        self.data_queue = data_queue
 
-    def run(self, duration):
+    def main(self):
         """Monitors all redis servers defined in the config for a certain number
         of seconds.
 
@@ -265,17 +272,17 @@ class RedisMonitor(object):
 
             redis_password = redis_server.get("password")
 
-            monitor = MonitorThread(redis_server["server"], redis_server["port"], redis_password)
-            self.threads.append(monitor)
-            monitor.setDaemon(True)
-            monitor.start()
+            # monitor = MonitorThread(redis_server["server"], redis_server["port"], redis_password)
+            # self.threads.append(monitor)
+            # monitor.setDaemon(True)
+            # monitor.start()
 
-            info = InfoThread(redis_server["server"], redis_server["port"], redis_password)
+            info = InfoThread(self.data_queue, redis_server["server"], redis_server["port"], redis_password)
             self.threads.append(info)
             info.setDaemon(True)
             info.start()
 
-        t = Timer(duration, self.stop)
+        t = Timer(self.duration, self.stop)
         t.start()
 
         try:
@@ -285,27 +292,50 @@ class RedisMonitor(object):
             self.stop()
             t.cancel()
 
+    def run(self):
+        self.main()
+        return
+
     def stop(self):
         """Stops the monitor and all associated threads.
         """
-        if args.quiet is False:
-            print("shutting down...")
+        # if args.quiet is False:
+        #     print("shutting down...")
         for t in self.threads:
                 t.stop()
         self.active = False
 
 
+def run_process(result_queue):
+    # parser = argparse.ArgumentParser(description='Monitor redis.')
+    # parser.add_argument('--duration',
+    #                     type=int,
+    #                     help="duration to run the monitor command (in seconds)",
+    #                     required=True)
+    # parser.add_argument('--quiet',
+    #                     help="do  not write anything to standard output",
+    #                     required=False,
+    #                     action='store_true')
+    # args = parser.parse_args()
+    # duration = args.duration
+    duration = 120
+    monitor = RedisMonitor(duration, result_queue)
+    monitor.start()
+    return
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Monitor redis.')
-    parser.add_argument('--duration',
-                        type=int,
-                        help="duration to run the monitor command (in seconds)",
-                        required=True)
-    parser.add_argument('--quiet',
-                        help="do  not write anything to standard output",
-                        required=False,
-                        action='store_true')
-    args = parser.parse_args()
-    duration = args.duration
-    monitor = RedisMonitor()
-    monitor.run(duration)
+    results = multiprocessing.Queue()
+    # parser = argparse.ArgumentParser(description='Monitor redis.')
+    # parser.add_argument('--duration',
+    #                     type=int,
+    #                     help="duration to run the monitor command (in seconds)",
+    #                     required=True)
+    # parser.add_argument('--quiet',
+    #                     help="do  not write anything to standard output",
+    #                     required=False,
+    #                     action='store_true')
+    # args = parser.parse_args()
+    # duration = args.duration
+    duration = 120
+    monitor = RedisMonitor(duration, results)
+    monitor.run()
