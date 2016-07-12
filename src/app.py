@@ -5,6 +5,8 @@ import jinja2
 from aiohttp import web
 from handler.MainHandler import MainHandler
 from handler.WebSocketHandler import RedisHanlder
+from handler.TestD3Handler import TestD3Hanlder
+from handler.DataHanlder import DataHanlder
 from util.RedisMonitor import run_process
 
 
@@ -15,8 +17,12 @@ async def main(loop):
     run_process(results)
     mainhandler = MainHandler()
     redishandler = RedisHanlder(results)
+    testd3handler = TestD3Hanlder()
+    datahandler = DataHanlder()
     app.router.add_route("GET", '/', mainhandler.get)
     app.router.add_route("*", '/data', redishandler.get)
+    app.router.add_route("GET", '/d3', testd3handler.get)
+    app.router.add_route("GET", '/getdata', datahandler.get)
     aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader('./template'))
     srv = await loop.create_server(app.make_handler(), "0.0.0.0", port=9999)
     return srv
