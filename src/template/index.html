@@ -2,96 +2,119 @@
 <meta charset="utf-8" />
 <html>
 <head>
-<script src="http://apps.bdimg.com/libs/jquery/1.4.2/jquery.min.js">
+<script type="text/javascript" src="http://cdn.hcharts.cn/jquery/jquery-1.8.3.min.js"></script>
+<script type="text/javascript" src="http://cdn.hcharts.cn/highcharts/highcharts.js"></script>
+<script type="text/javascript" src="http://cdn.hcharts.cn/highcharts/modules/exporting.js"></script>
 </script>
   <script language="javascript" type="text/javascript">
-    $(function() {
-      var int= null;
-      var conn = null;
-      function log(msg) {
-        var control = $('#log');
-        control.html(control.html() + msg + '<br/>');
-        control.scrollTop(control.scrollTop() + 1000);
-      }
-      function info(){
-        if (conn != null){
-          conn.send("get");
-        }
-      }
-      function connect() {
-        disconnect();
-        var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host + "/data";
-        conn = new WebSocket(wsUri);
-        log('Connecting...');
-        conn.onopen = function() {
-          log('Connected.');
-          update_ui();
-        };
-        conn.onmessage = function(e) {
-          log('Received: ' + e.data);
-        };
-        conn.onclose = function() {
-          log('Disconnected.');
-          conn = null;
-          update_ui();
-        };
-        int = window.setInterval(info,1000);
-      }
-      function disconnect() {
-        if (conn != null) {
-          log('Disconnecting...');
-          conn.close();
-          conn = null;
-          update_ui();
-        }
-      }
-      function update_ui() {
-        var msg = '';
-        if (conn == null) {
-          $('#status').text('disconnected');
-          $('#connect').html('Connect');
-        } else {
-          $('#status').text('connected (' + conn.protocol + ')');
-          $('#connect').html('Disconnect');
-        }
-      }
+    $(function () {
 
-      $('#connect').click(function() {
-        if (conn == null) {
-          connect();
-        } else {
+        var conn = null;
+        var testMsg = null;
+        function getData(msg) {
+          testMsg = JSON.parse(msg);
+        }
+        function info(){
+          if (conn != null){
+            conn.send("get");
+          }
+        }
+        function connect() {
           disconnect();
+          var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host + "/data";
+          conn = new WebSocket(wsUri);
+          console.log('Connecting...');
+          conn.onopen = function() {
+            console.log('Connected.');
+          };
+          conn.onmessage = function(e) {
+            getData(e.data);
+          };
+          conn.onclose = function() {
+            console.log('Disconnected.');
+            conn = null;
+          };
         }
-        update_ui();
-        return false;
-      });
-      $('#send').click(function() {
+        function disconnect() {
+          if (conn != null) {
+            log('Disconnecting...');
+            conn.close();
+            conn = null;
+          }
+        }
+        Highcharts.setOptions({
+            global: {
+                useUTC: false
+            }
+        });
 
-        window.clearInterval(int);
-        disconnect();
-        return false;
-      });
-      $('#text').keyup(function(e) {
-        if (e.keyCode === 13) {
-          $('#send').click();
-          return false;
-        }
-      });
+        var chart;
+        $('#container').highcharts({
+            chart: {
+                type: 'spline',
+                animation: Highcharts.svg, // don't animate in old IE
+                marginRight: 10,
+                events: {
+                    load: function() {
+                        var series = this.series[0];
+                        connect();
+                        setInterval(function() {
+                            info();
+                            var x = (new Date()).getTime(), // current time
+                               y = testMsg != null? testMsg.used_memory / 1024 : 0;
+                            series.addPoint([x, y], true, true);
+                        }, 1000);
+                    }
+                }
+            },
+            title: {
+                text: 'Memory Used'
+            },
+            xAxis: {
+                type: 'datetime',
+                tickPixelInterval: 100
+            },
+            yAxis: {
+                title: {
+                    text: 'Memory Used / K'
+                },
+                min: 0
+            },
+            tooltip: {
+                formatter: function() {
+                        return '<b>'+ this.series.name +'</b><br/>'+
+                        Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) +'<br/>'+
+                        Highcharts.numberFormat(this.y, 4);
+                }
+            },
+            legend: {
+                enabled: false
+            },
+            exporting: {
+                enabled: false
+            },
+            series: [{
+                name: 'Random data',
+                data: (function() {
+                    // generate an array of random data
+                    var data = [],
+                        time = (new Date()).getTime(),
+                        i;
+
+                    for (i = -19; i <= 0; i++) {
+                        data.push({
+                            x: time + i * 1000,
+                            y: 0
+                        });
+                    }
+                    return data;
+                })()
+            }]
+        });
     });
 </script>
 </head>
 <body>
-<h3>Chat!</h3>
-<div>
-  <button id="connect">Connect</button>&nbsp;|&nbsp;Status:
-  <span id="status">disconnected</span>
-</div>
-<div id="log"
-     style="width:20em;height:15em;overflow:auto;border:1px solid black">
-</div>
-<form id="chatform" onsubmit="return false;">
-  <input id="text" type="text" />
-  <input id="send" type="button" value="Send" />
-</form>
+<div id="container" style="min-width:700px;height:400px"></div>
 </body>
 </html>

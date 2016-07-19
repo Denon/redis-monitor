@@ -1,5 +1,5 @@
 import aiohttp
-
+import json
 from aiohttp.web import Application, Response, MsgType, WebSocketResponse
 
 
@@ -22,7 +22,7 @@ class RedisHanlder(object):
             if msg.tp == MsgType.text:
                 for ws in request.app['sockets']:
                     redis_info = self.queue.get()
-                    ws.send_str(str(redis_info))
+                    ws.send_str(json.dumps(redis_info))
             else:
                 break
 

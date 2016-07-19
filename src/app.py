@@ -13,7 +13,7 @@ from util.RedisMonitor import run_process
 async def main(loop):
     app = web.Application()
     app['sockets'] = []
-    results = multiprocessing.Queue()
+    results = multiprocessing.Queue(2)
     run_process(results)
     mainhandler = MainHandler()
     redishandler = RedisHanlder(results)
