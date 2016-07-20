@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="{{ url('static', filename='reset.css') }}" type="text/css" />
+<link rel="stylesheet" href="{{ url('static', filename='style.css') }}" type="text/css" />
+<script type="text/javascript" src="http://cdn.hcharts.cn/jquery/jquery-1.8.3.min.js"></script>
+<script type="text/javascript" src="http://cdn.hcharts.cn/highcharts/highcharts.js"></script>
+<script type="text/javascript" src="http://cdn.hcharts.cn/highcharts/exporting.js"></script>
+<title>HTML5的标题</title>
+</head>
+<body>
+	<div class="data-container">
+		<div class="data-chart" id="data-chart" style="min-width:700px;height:400px">
+		</div>
+		<div class="panel">
+			<p>REDIS OVERVIEW</p>
+			<div class="wrapper">
+				<div class="title">
+					total keys
+				</div>
+				<div id="totalKeys"  class="data">
+					0
+				</div>
+			</div>
+			<div class="wrapper">
+				<div class="title">
+					uptime
+				</div>
+				<div id="uptime" class="data">
+					0
+				</div>
+			</div>
+			<div class="wrapper">
+				<div class="title">
+					connected clients
+				</div>
+				<div id="connectedClients" class="data">
+					0
+				</div>
+			</div>
+		</div><div class="panel">
+			<p>REDIS INFO DATA</p>
+			<div class="wrapper">
+				<div class="title">
+					used memory peak
+				</div>
+				<div id="usedMemoryPeak" class="data">
+					0
+				</div>
+			</div>
+			<div class="wrapper">
+				<div class="title">
+					hit rate
+				</div>
+				<div id="hitRate" class="data">
+					0
+				</div>
+			</div>
+			<div class="wrapper">
+				<div class="title">
+					mem fragmentation
+				</div>
+				<div id="memFragmentation" class="data">
+					0
+				</div>
+			</div>
+		</div>
+	</div>
+	<script type="text/javascript">
+	$(function () {
+
+	        var conn = null;
+            var redisData = null;
+            function getData(msg) {
+              redisData = JSON.parse(msg);
+            }
+            function info(){
+              if (conn != null){
+                conn.send("get");
+              }
+            }
+            function connect() {
+              disconnect();
+              var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host + "/data";
+              conn = new WebSocket(wsUri);
+              console.log('Connecting...');
+              conn.onopen = function() {
+                console.log('Connected.');
+              };
+              conn.onmessage = function(e) {
+                getData(e.data);
+              };
+              conn.onclose = function() {
+                redisData = null
+                conn = null;
+              };
+            }
+            function disconnect() {
+              if (conn != null) {
+                conn.close();
+                conn = null;
+              }
+            }
+            connect();
+			Highcharts.setOptions({
+					global: {
+							useUTC: false
+					}
+			});
+			function updateui(redis_data){
+				if(redis_data != null){
+					$('#totalKeys').html(redis_data.db0.keys);
+					$('#uptime').html(redis_data.uptime_in_days);
+					$('#connectedClients').html(redis_data.connected_clients);
+					$('#usedMemoryPeak').html(redis_data.used_memory_peak_human);
+					$('#hitRate').html(redis_data.hit_rate);
+					$('#memFragmentation').html(redis_data.mem_fragmentation_ratio);
+				}
+			}
+			var chart;
+			$('#data-chart').highcharts({
+					chart: {
+							type: 'spline',
+							animation: Highcharts.svg, // don't animate in old IE
+							marginRight: 10,
+							backgroundColor: "#2F302F",
+							events: {
+									load: function() {
+
+
+											var series = this.series[0];
+											setInterval(function() {
+													info();
+													updateui(redisData)
+                                                    var x = (new Date()).getTime(), // current time
+                                                       y = redisData != null? redisData.used_memory / 1024 : 0;
+                                                    series.addPoint([x, y], true, true);
+											}, 1000);
+									}
+							}
+					},
+					title: {
+							text: 'Live random data',
+							style: {
+	                color: '#D8D8D8',
+	                fontWeight: 'bold'
+	            },
+							align: 'left',
+							x: 70
+					},
+					xAxis: {
+							type: 'datetime',
+							tickPixelInterval: 150,
+							tickPosition: 'inside',
+							labels: {
+                style: {
+                    color: '#D8D8D8'
+                }
+            	}
+					},
+					yAxis: {
+							title: {
+									text: 'Value'
+							},
+
+							labels: {
+                style: {
+                    color: '#D8D8D8'
+                }
+            	}
+					},
+					tooltip: {
+							formatter: function() {
+											return '<b>'+ this.series.name +'</b><br/>'+
+											Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) +'<br/>'+
+											Highcharts.numberFormat(this.y, 2);
+							}
+					},
+					legend: {
+							enabled: false
+					},
+					exporting: {
+							enabled: false
+					},
+					plotOptions: {
+            series: {
+                color: '#EFC954'
+            }
+        	},
+					series: [{
+							name: 'Random data',
+							marker: {
+								symbol: "circle",
+								radius: 5,
+								lineWidth: 3,
+								lineColor: '#EFC954',
+								fillColor: '#2F302F'
+							},
+							data: (function() {
+									// generate an array of random data
+									var data = [],
+											time = (new Date()).getTime(),
+											i;
+
+									for (i = -19; i <= 0; i++) {
+											data.push({
+													x: time + i * 1000,
+													y: 0
+											});
+									}
+									return data;
+							})()
+					}]
+			});
+});
+	</script>
+</body>
+</html>

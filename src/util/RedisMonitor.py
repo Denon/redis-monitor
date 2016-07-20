@@ -9,6 +9,7 @@ import threading
 import traceback
 import argparse
 import time
+import math
 
 
 class DataAccess(object):
@@ -212,7 +213,9 @@ class InfoThread(threading.Thread):
                 redis_info = redis_client.info()
                 current_time = datetime.datetime.now()
                 used_memory = int(redis_info['used_memory'])
-
+                key_hits = redis_info.get("keyspace_hits")
+                key_miss = redis_info.get("keyspace_misses")
+                redis_info["hit_rate"] = math.floor(key_hits / (key_hits + key_miss) * 100)
                 # used_memory_peak not available in older versions of redis
                 try:
                     peak_memory = int(redis_info['used_memory_peak'])
