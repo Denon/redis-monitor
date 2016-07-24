@@ -67,6 +67,10 @@
 			</div>
 		</div>
 	</div>
+	<div id="error" class="error">
+		<h1>Oops!</h1>
+		<p></p>
+	</div>
 	<script type="text/javascript">
 	$(function () {
 
@@ -109,8 +113,17 @@
 					}
 			});
 			function updateui(redis_data){
-				if(redis_data != null){
-					$('#totalKeys').html(redis_data.db0.keys);
+				if (redis_data != null && redis_data.connection_error){
+					$('#error').show();
+					$('#error p').html(redis_data.error_message.replace("\n", "<br>"));
+					$('.data-container').hide();
+				}
+				else if(redis_data != null){
+					$('#error').hide();
+					$('.data-container').show();
+					if (redis_data.db0){
+					 $('#totalKeys').html(redis_data.db0.keys);
+					}
 					$('#uptime').html(redis_data.uptime_in_days);
 					$('#connectedClients').html(redis_data.connected_clients);
 					$('#usedMemoryPeak').html(redis_data.used_memory_peak_human);
@@ -141,7 +154,7 @@
 							}
 					},
 					title: {
-							text: 'Live random data',
+							text: 'RealTime Memory Use',
 							style: {
 	                color: '#D8D8D8',
 	                fontWeight: 'bold'
@@ -161,7 +174,7 @@
 					},
 					yAxis: {
 							title: {
-									text: 'Value'
+									text: 'Used Memory (K)'
 							},
 
 							labels: {

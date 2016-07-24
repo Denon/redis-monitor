@@ -1,27 +1,22 @@
-import multiprocessing
-import pathlib
 import asyncio
+import pathlib
+
 import aiohttp_jinja2
 import jinja2
 from aiohttp import web
-from handler.MainHandler import MainHandler
-from handler.WebSocketHandler import RedisHanlder
-from handler.DataHanlder import DataHanlder
-from util.RedisMonitor import run_process
 
-PROJ_ROOT = pathlib.Path(__file__).parent
+from web.handler.MainHandler import MainHandler
+from web.handler.WebSocketHandler import RedisHanlder
 
-async def main(loop):
+PROJ_ROOT = pathlib.Path(__file__).parent.parent
+
+async def get_app(loop, data_queue):
     app = web.Application()
     app['sockets'] = []
-    results = multiprocessing.Queue(2)
-    run_process(results)
     mainhandler = MainHandler()
-    redishandler = RedisHanlder(results)
-    datahandler = DataHanlder()
+    redishandler = RedisHanlder(data_queue)
     app.router.add_route("GET", '/', mainhandler.get)
     app.router.add_route("*", '/data', redishandler.get)
-    app.router.add_route("GET", '/getdata', datahandler.get)
     app.router.add_static('/static/',
                           path=str(PROJ_ROOT / 'static/css'),
                           name='static')
@@ -32,7 +27,7 @@ async def main(loop):
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(loop))
+    loop.run_until_complete(get_app(loop))
     try:
         loop.run_forever()
     except KeyboardInterrupt:

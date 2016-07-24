@@ -5,7 +5,7 @@ body {
 .data-container {
   width: 1492px;
   margin: 0 auto;
-  margin-top: 50px;
+  margin-top: 200px;
 }
 
 .table {
@@ -51,4 +51,23 @@ body {
   overflow: hidden;
   color: #D8D8D8;
   font-size: 60px;
+}
+
+.error {
+  width: 1000px;
+  margin: 0 auto;
+  margin-top: 200px;
+  display: none;
+}
+
+.error h1 {
+  color: #D8D8D8;
+  text-align: center;
+  font-size: 9em;
+}
+
+.error p {
+  margin-top: 1em;
+  color: #D8D8D8;
+  font-size: 2em;
 }
