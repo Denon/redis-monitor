@@ -131,10 +131,10 @@ if __name__ == '__main__':
     try:
         app_queue = multiprocessing.Queue(2)
         notice_queue = multiprocessing.Queue()
-        # start monitor
-        run_process(app_queue, notice_queue)
         # start notice
         notice = run_notice(notice_queue)
+        # start monitor
+        run_process(app_queue, notice_queue)
         # start web server
         loop = asyncio.get_event_loop()
         loop.run_until_complete(get_app(loop, app_queue))
